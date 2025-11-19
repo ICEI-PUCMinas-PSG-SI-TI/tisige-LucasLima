@@ -1,0 +1,19 @@
+project_id = "mzkfftyoouulbseeywnx"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.submit-consent]
+verify_jwt = false
+
+[functions.get-bill-data]
+verify_jwt = false
+
+[functions.generate-bill-token]
+verify_jwt = true
+
+[functions.create-kitchen]
+verify_jwt = true
+
+[functions.update-kitchen]
+verify_jwt = true
