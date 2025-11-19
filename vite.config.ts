@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
    // Configure base path for GitHub Pages deployment
-  base: mode === "production" ? "tisige-LucasLima" : "/",
+  base: mode === "production" ? "/tisige-LucasLima" : "/",
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
