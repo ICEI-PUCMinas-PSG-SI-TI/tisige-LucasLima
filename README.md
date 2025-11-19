@@ -382,7 +382,7 @@ Este projeto foi desenvolvido para fins acadêmicos.
 
 ## 🙏 Agradecimentos
 
-- Prof. [Nome do Professor] - Orientação e supervisão
+- Prof(a). Simone Fernandes Queiroz - Orientação e supervisão
 - PUC Minas - Infraestrutura e suporte acadêmico
 - Comunidade open-source - Bibliotecas e ferramentas utilizadas
 
