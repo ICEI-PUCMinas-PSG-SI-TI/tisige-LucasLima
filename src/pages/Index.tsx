@@ -16,9 +16,6 @@ const Index = () => {
         <Button size="lg" onClick={() => navigate("/auth")}>
           Acessar Sistema
         </Button>
-        <Button size="lg" variant="outline" onClick={() => navigate("/kitchen-login")}>
-          Acesso Cozinha
-        </Button>
       </div>
     </div>
   );
