@@ -55,6 +55,10 @@ Deno.serve(async (req) => {
     // Parse request body
     const { userId }: SoftDeleteUserRequest = await req.json()
 
+    if (!userId) {
+      throw new Error('userId é obrigatório')
+    }
+
     console.log(`Realizando soft delete do usuário: ${userId}`)
 
     // Prevent admin from deleting themselves
@@ -73,15 +77,33 @@ Deno.serve(async (req) => {
       throw new Error('Não é possível excluir usuários administradores')
     }
 
-    // Perform soft delete by setting deleted_at timestamp
-    const { error: updateError } = await supabaseAdmin
+    // Step 1: Ban user in Auth (primary action)
+    console.log('Banindo usuário no Auth...')
+    const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { ban_duration: '876000h' }
+    )
+
+    if (banError) {
+      console.error('Erro ao banir usuário:', banError)
+      throw new Error('Erro ao banir usuário no sistema de autenticação')
+    }
+
+    console.log('Usuário banido com sucesso no Auth')
+
+    // Step 2: Try to soft delete in profiles (best effort)
+    console.log('Tentando atualizar perfil...')
+    const { error: updateError, count } = await supabaseAdmin
       .from('profiles')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', userId)
 
     if (updateError) {
-      console.error('Erro ao realizar soft delete:', updateError)
-      throw new Error('Erro ao excluir usuário')
+      console.error('Erro ao atualizar perfil (não crítico):', updateError)
+    } else if (count === 0) {
+      console.log('Perfil não encontrado na tabela profiles (usuário antigo), mas banimento foi bem-sucedido')
+    } else {
+      console.log(`Perfil atualizado com sucesso (${count} registro(s))`)
     }
 
     console.log(`Soft delete realizado com sucesso para usuário ${userId}`)
@@ -89,7 +111,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Usuário excluído com sucesso'
+        message: 'Usuário excluído com sucesso',
+        details: {
+          banned: true,
+          profileUpdated: count !== 0
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
