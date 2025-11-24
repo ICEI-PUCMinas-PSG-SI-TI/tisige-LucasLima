@@ -19,6 +19,7 @@ export default function Setup() {
     password: "",
     fullName: "",
     unitId: "",
+    securityCode: "",
   });
 
   useEffect(() => {
@@ -59,6 +60,13 @@ export default function Setup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Verificar código de segurança
+    if (formData.securityCode !== "FoodFlow2025") {
+      toast.error("Código de segurança inválido");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -174,6 +182,20 @@ export default function Setup() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="securityCode">Código de Segurança</Label>
+              <Input
+                id="securityCode"
+                type="password"
+                value={formData.securityCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, securityCode: e.target.value })
+                }
+                required
+                placeholder="Digite o código de segurança"
+              />
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
