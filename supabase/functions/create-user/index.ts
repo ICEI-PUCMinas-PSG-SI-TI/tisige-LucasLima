@@ -111,17 +111,20 @@ Deno.serve(async (req) => {
 
     console.log(`Usuário criado com ID: ${newUser.user.id}`)
 
-    // Update profile with unit_id
-    const { error: profileUpdateError } = await supabaseAdmin
+    // Insert into profiles table
+    const { error: profileInsertError } = await supabaseAdmin
       .from('profiles')
-      .update({ unit_id: unitId || null })
-      .eq('id', newUser.user.id)
+      .insert({
+        id: newUser.user.id,
+        full_name: fullName,
+        unit_id: unitId || null
+      })
 
-    if (profileUpdateError) {
-      console.error('Erro ao atualizar perfil com unit_id:', profileUpdateError)
-      // Try to delete the user if profile update fails
+    if (profileInsertError) {
+      console.error('Erro ao criar perfil:', profileInsertError)
+      // Try to delete the user if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
-      throw new Error('Erro ao atualizar unidade do perfil')
+      throw new Error('Erro ao criar perfil do usuário')
     }
 
     // Assign the role
