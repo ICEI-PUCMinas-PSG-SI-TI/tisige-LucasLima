@@ -94,7 +94,7 @@ serve(async (req) => {
     }
 
     // Create user with generated email
-    const email = `kitchen-${identifier}@ponto-de-fuga.internal`;
+    const email = `kitchen-${identifier}@foodflow.internal`;
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: identifier,
@@ -104,11 +104,21 @@ serve(async (req) => {
 
     if (createError) throw createError;
 
-    // Update profile with unit_id
-    await supabaseAdmin
+    // Insert into profiles table
+    const { error: profileInsertError } = await supabaseAdmin
       .from("profiles")
-      .update({ unit_id })
-      .eq("id", newUser.user.id);
+      .insert({
+        id: newUser.user.id,
+        full_name: `KITCHEN-${identifier}`,
+        unit_id: unit_id
+      });
+
+    if (profileInsertError) {
+      console.error('Erro ao criar perfil da cozinha:', profileInsertError);
+      // Try to delete the user if profile creation fails
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      throw new Error('Erro ao criar perfil da cozinha');
+    }
 
     // Create user role
     await supabaseAdmin
