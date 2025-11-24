@@ -41,7 +41,7 @@ const Index = () => {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-secondary/30 to-accent/10 p-4 text-center">
       <div className="mx-auto mb-6">
-        <img src={logo} alt="Ponto de Fuga" className="h-64 w-auto object-contain" />
+        <img src={logo} alt="FoodFlow" className="h-64 w-auto object-contain" />
       </div>
       <h1 className="mb-4 text-4xl font-bold text-primary md:text-5xl">FoodFlow ERP</h1>
       <p className="mb-8 max-w-md text-lg text-muted-foreground">Sistema de Gestão</p>

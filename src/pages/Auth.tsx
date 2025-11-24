@@ -43,7 +43,7 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto mb-2">
-            <img src={logoAuth} alt="Ponto de Fuga" className="h-32 w-auto object-contain" />
+            <img src={logoAuth} alt="FoodFlow" className="h-32 w-auto object-contain" />
           </div>
           <CardTitle className="text-3xl font-bold">FoodFlow ERP</CardTitle>
           <CardDescription className="text-base">Faça login para acessar o sistema</CardDescription>

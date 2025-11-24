@@ -24,7 +24,7 @@ export default function KitchenLogin() {
       }
 
       // Login using internal email format
-      const email = `kitchen-${identifier}@ponto-de-fuga.internal`;
+      const email = `kitchen-${identifier}@foodflow.internal`;
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password: identifier,

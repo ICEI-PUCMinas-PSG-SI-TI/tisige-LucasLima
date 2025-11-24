@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Receipt, AlertCircle } from "lucide-react";
+import { Receipt, AlertCircle } from "lucide-react";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const phoneSchema = z.object({
-  phone: z.string().trim().regex(/^\+?[1-9]\d{1,14}$/, "Telefone inválido").optional().or(z.literal("")),
+  phone: z.string().trim().regex(/^(\(?\d{2}\)?\s?)?(9\d{4}-?\d{4}|\d{4}-?\d{4})$/, "Formato inválido. Use: (XX) XXXXX-XXXX"),
 });
 
 export default function Bill() {
@@ -21,6 +22,14 @@ export default function Bill() {
   const [table, setTable] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [phone, setPhone] = useState("");
+  const [acceptsPromotions, setAcceptsPromotions] = useState(false);
+
+  // Clear phone when checkbox is unchecked
+  useEffect(() => {
+    if (!acceptsPromotions) {
+      setPhone("");
+    }
+  }, [acceptsPromotions]);
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +85,15 @@ export default function Bill() {
     }
   };
 
-  const handleConsentSubmit = async (consent: boolean) => {
-    if (phone) {
+  const handleConsentSubmit = async () => {
+    // Validate phone is required when consent is given
+    if (acceptsPromotions && !phone.trim()) {
+      toast.error("Telefone é obrigatório para receber promoções");
+      return;
+    }
+
+    // Validate phone format when provided and consent is given
+    if (acceptsPromotions && phone.trim()) {
       const result = phoneSchema.safeParse({ phone });
       if (!result.success) {
         toast.error(result.error.errors[0].message);
@@ -92,8 +108,8 @@ export default function Bill() {
       const { data, error: consentError } = await supabase.functions.invoke('submit-consent', {
         body: {
           tableId,
-          phone: phone || null,
-          consentGiven: consent,
+          phone: acceptsPromotions ? phone.trim() : null,
+          consentGiven: acceptsPromotions,
         }
       });
 
@@ -108,7 +124,7 @@ export default function Bill() {
 
       if (tableError) throw tableError;
 
-      setConsentGiven(consent);
+      setConsentGiven(acceptsPromotions);
       toast.success("Preferências registradas!");
     } catch (error: any) {
       console.error("Erro ao registrar preferências:", error);
@@ -226,40 +242,50 @@ export default function Bill() {
             </div>
 
             <div className="space-y-4 rounded-lg border p-4">
-              <h3 className="font-semibold">Deseja receber promoções?</h3>
-              <p className="text-sm text-muted-foreground">
-                Gostaríamos de enviar ofertas especiais e novidades via telefone.
-              </p>
+              <h3 className="font-semibold">Promoções via WhatsApp</h3>
+              
+              <div className="flex items-start space-x-3 rounded-lg bg-muted/50 p-3">
+                <Checkbox
+                  id="consent"
+                  checked={acceptsPromotions}
+                  onCheckedChange={(checked) => setAcceptsPromotions(checked === true)}
+                  disabled={loading}
+                />
+                <div className="flex-1">
+                  <Label 
+                    htmlFor="consent" 
+                    className="cursor-pointer text-sm font-normal leading-relaxed"
+                  >
+                    Aceito receber promoções via WhatsApp
+                  </Label>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone (opcional)</Label>
+                <Label htmlFor="phone" className={!acceptsPromotions ? "text-muted-foreground" : ""}>
+                  Telefone {acceptsPromotions && <span className="text-destructive">*</span>}
+                </Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="(00) 00000-0000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  disabled={loading}
+                  disabled={!acceptsPromotions || loading}
+                  required={acceptsPromotions}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Formato: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+                </p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleConsentSubmit(false)}
-                  disabled={loading}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Não, obrigado
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => handleConsentSubmit(true)}
-                  disabled={loading}
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Sim, aceito
-                </Button>
-              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleConsentSubmit}
+                disabled={loading}
+              >
+                Continuar
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -28,12 +28,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate phone format if provided and consent is given
+    // Validate phone is required when consent is given
+    if (consentGiven && !phone) {
+      return new Response(
+        JSON.stringify({ error: 'Telefone é obrigatório para receber promoções' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate phone format (Brazilian format) if provided and consent is given
     if (consentGiven && phone) {
-      const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-      if (!phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''))) {
+      const brazilianPhoneRegex = /^(\(?\d{2}\)?\s?)?(9\d{4}-?\d{4}|\d{4}-?\d{4})$/;
+      if (!brazilianPhoneRegex.test(phone.trim())) {
         return new Response(
-          JSON.stringify({ error: 'Invalid phone number format' }),
+          JSON.stringify({ error: 'Formato inválido. Use: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -86,7 +94,7 @@ Deno.serve(async (req) => {
       .insert({
         table_id: tableId,
         consent_given: consentGiven,
-        phone: consentGiven && phone ? phone : null,
+        phone: consentGiven && phone ? phone.trim() : null,
       })
       .select()
       .single();
