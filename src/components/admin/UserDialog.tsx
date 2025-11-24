@@ -128,6 +128,7 @@ export function UserDialog({ open, onOpenChange, onSuccess, user }: UserDialogPr
         if (!data?.success) throw new Error(data?.error || "Erro ao atualizar usuário");
 
         toast.success("Usuário atualizado com sucesso!");
+        onSuccess(); // Atualizar lista imediatamente
       } else {
         // Create new user
         const { data, error } = await supabase.functions.invoke('create-user', {
@@ -144,15 +145,16 @@ export function UserDialog({ open, onOpenChange, onSuccess, user }: UserDialogPr
         if (!data?.success) throw new Error(data?.error || "Erro ao criar usuário");
 
         toast.success("Usuário criado com sucesso!");
+        onSuccess(); // Atualizar lista imediatamente
       }
 
+      // Limpar campos e fechar modal após atualizar
       setFullName("");
       setEmail("");
       setPassword("");
       setRole("waiter");
       setUnitId("");
       onOpenChange(false);
-      onSuccess();
     } catch (error: any) {
       console.error("Erro ao processar usuário:", error);
       toast.error(error.message || "Erro ao processar usuário");
