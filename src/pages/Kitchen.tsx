@@ -89,6 +89,12 @@ export default function Kitchen() {
     if (unitId) {
       loadOrders();
 
+      // Backup: Polling a cada 5s
+      const intervalId = setInterval(() => {
+        console.log("Polling orders...");
+        loadOrders();
+      }, 5000);
+
       // Realtime updates
       const channel = supabase
         .channel("orders-changes")
@@ -106,6 +112,7 @@ export default function Kitchen() {
         .subscribe();
 
       return () => {
+        clearInterval(intervalId);
         supabase.removeChannel(channel);
       };
     }
