@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, ChefHat, Users, Activity } from "lucide-react";
+import { LogOut, Users, Activity, FileText } from "lucide-react";
 import { MenuManagement } from "@/components/admin/MenuManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { UnitsManagement } from "@/components/admin/UnitsManagement";
 import { StockManagement } from "@/components/admin/StockManagement";
 import { KitchenManagement } from "@/components/admin/KitchenManagement";
 import { DemoDataButton } from "@/components/admin/DemoDataButton";
+import { SalesReport } from "@/components/admin/SalesReport";
 import { supabase } from "@/integrations/supabase/client";
 
 const DashboardOverview = ({ 
@@ -23,12 +24,11 @@ const DashboardOverview = ({
     <div className="grid gap-6 md:grid-cols-3">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pedidos em Preparo</CardTitle>
-          <ChefHat className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Relatórios Financeiros</CardTitle>
+          <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{ordersInProgress}</div>
-          <p className="text-xs text-muted-foreground">Total de pedidos ativos</p>
+          <SalesReport />
         </CardContent>
       </Card>
 
