@@ -49,7 +49,7 @@ export function SalesReport() {
           closed_at,
           total_amount,
           profiles:waiter_id(full_name),
-          orders(
+          orders:orders!orders_table_id_fkey(
             quantity,
             menu_items(name)
           )
