@@ -59,14 +59,14 @@ Deno.serve(async (req) => {
       throw new Error('userId é obrigatório')
     }
 
-    console.log(`Realizando soft delete do usuário: ${userId}`)
+    console.log(`Iniciando soft delete do usuário: ${userId}`)
 
     // Prevent admin from deleting themselves
     if (userId === user.id) {
       throw new Error('Você não pode excluir sua própria conta')
     }
 
-    // Check if user is admin (prevent deleting admins)
+    // Check if target user is admin (prevent deleting admins)
     const { data: targetRoleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
@@ -77,44 +77,51 @@ Deno.serve(async (req) => {
       throw new Error('Não é possível excluir usuários administradores')
     }
 
-    // Step 1: Ban user in Auth (primary action)
-    console.log('Banindo usuário no Auth...')
+    // PASSO PRINCIPAL: Ban user in Auth (this is the critical action)
+    console.log('Banindo usuário no sistema de autenticação...')
     const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
       { ban_duration: '876000h' }
     )
 
     if (banError) {
-      console.error('Erro ao banir usuário:', banError)
+      console.error('Erro crítico ao banir usuário:', banError)
       throw new Error('Erro ao banir usuário no sistema de autenticação')
     }
 
-    console.log('Usuário banido com sucesso no Auth')
+    console.log('✓ Usuário banido com sucesso')
 
-    // Step 2: Try to soft delete in profiles (best effort)
-    console.log('Tentando atualizar perfil...')
-    const { error: updateError, count } = await supabaseAdmin
-      .from('profiles')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', userId)
+    // PASSO SECUNDÁRIO: Try to soft delete in profiles (best effort, non-critical)
+    let profileUpdated = false
+    try {
+      console.log('Tentando marcar perfil como deletado...')
+      const { error: updateError, count } = await supabaseAdmin
+        .from('profiles')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', userId)
 
-    if (updateError) {
-      console.error('Erro ao atualizar perfil (não crítico):', updateError)
-    } else if (count === 0) {
-      console.log('Perfil não encontrado na tabela profiles (usuário antigo), mas banimento foi bem-sucedido')
-    } else {
-      console.log(`Perfil atualizado com sucesso (${count} registro(s))`)
+      if (updateError) {
+        console.warn('Aviso: Erro ao atualizar perfil (não crítico):', updateError.message)
+      } else if (count === 0) {
+        console.warn('Aviso: Perfil não encontrado na tabela profiles (usuário sem perfil)')
+      } else {
+        console.log(`✓ Perfil marcado como deletado (${count} registro)`)
+        profileUpdated = true
+      }
+    } catch (profileError) {
+      // Ignore any errors from profile update - the ban is what matters
+      console.warn('Aviso: Exceção ao atualizar perfil (ignorada):', profileError)
     }
 
-    console.log(`Soft delete realizado com sucesso para usuário ${userId}`)
+    console.log(`✓ Soft delete concluído com sucesso para usuário ${userId}`)
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Usuário excluído com sucesso',
+        message: 'Usuário desativado/banido',
         details: {
           banned: true,
-          profileUpdated: count !== 0
+          profileUpdated: profileUpdated
         }
       }),
       {
