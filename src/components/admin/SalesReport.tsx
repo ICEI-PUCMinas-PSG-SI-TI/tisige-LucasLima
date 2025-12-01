@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { FileText, Loader2, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -28,7 +28,11 @@ export function SalesReport() {
 
   const handleProcess = async () => {
     if (!startDate || !endDate) {
-      toast.error("Por favor, preencha ambas as datas");
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha ambas as datas",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -36,49 +40,49 @@ export function SalesReport() {
     setResult(null);
 
     try {
-      // Ajusta as datas para o fuso horário UTC para garantir a consistência da query
-      const start = new Date(startDate);
-      start.setUTCHours(0, 0, 0, 0);
-      const adjustedStartDate = start.toISOString();
+      // Ajustar endDate para incluir o final do dia
+      const adjustedEndDate = endDate ? `${endDate}T23:59:59` : endDate;
 
-      const end = new Date(endDate); // A data do input é YYYY-MM-DD (meia-noite UTC)
-      end.setUTCHours(23, 59, 59, 999); // Ajusta para o final do dia em UTC
-      const adjustedEndDate = end.toISOString();
-
-      // Query com joins para buscar dados completos
-      // Alterado para buscar da tabela 'orders'
+      // Query focada em orders (pedidos) no período
       const { data, error } = await supabase
         .from("orders")
         .select(`
           id,
-          created_at,
-          status,
           quantity,
           item_price,
-          profiles:waiter_id(full_name),
+          created_at,
+          completed_at,
+          status,
           menu_items(name),
-          tables(table_number)
+          profiles:waiter_id(full_name),
+          tables:table_id(table_number)
         `)
-        .gte("created_at", adjustedStartDate)
+        .gte("created_at", startDate)
         .lte("created_at", adjustedEndDate)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Filtra apenas os pedidos que geram receita (não cancelados) para o cálculo
       // Calcular totais para exibição
-      const total = data.reduce((acc, order) => acc + (order.item_price || 0) * order.quantity, 0);
-      const count = data.reduce((acc, order) => acc + order.quantity, 0);
+      const total = data.reduce((acc, order) => acc + (order.item_price * order.quantity), 0);
+      const count = data.length;
 
       setResult({ total, count });
 
       // Gerar PDF
       generatePDF(data, startDate, endDate, total, count);
 
-      toast.success("Relatório gerado com sucesso!");
+      toast({
+        title: "Relatório gerado",
+        description: "O PDF foi baixado com sucesso",
+      });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
-      toast.error("Falha ao processar o relatório");
+      toast({
+        title: "Erro",
+        description: "Falha ao processar o relatório",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -101,11 +105,11 @@ export function SalesReport() {
 
     // Resumo
     doc.setFontSize(10);
-    doc.text(`Total de Itens Vendidos: ${count} | Total Geral: ${formatCurrency(total)}`, 105, 28, { align: "center" });
+    doc.text(`Total de Pedidos: ${count} | Total Geral: ${formatCurrency(total)}`, 105, 28, { align: "center" });
 
-    // Preparar dados da tabela
+    // Preparar dados da tabela - cada linha é um pedido
     const tableData = data.map((order) => {
-      // Formatar data/hora
+      // Formatar data/hora da venda
       const dateTime = order.created_at 
         ? new Date(order.created_at).toLocaleString("pt-BR", {
             day: "2-digit",
@@ -116,39 +120,31 @@ export function SalesReport() {
           })
         : "N/A";
 
-      const tableName = `Mesa ${order.tables?.table_number || "?"}`;
-      const itemName = order.menu_items?.name || "Item desconhecido";
-      const quantity = order.quantity;
-      const unitPrice = formatCurrency(order.item_price || 0);
-      const totalValue = formatCurrency((order.item_price || 0) * order.quantity);
-
-      const statusLabels: Record<string, string> = {
-        pending: "Pendente",
-        preparing: "Preparando",
-        delivered: "Entregue",
-        cancelled: "Cancelado",
-      };
-
-      const statusText = statusLabels[order.status] || order.status;
-
       // Nome do garçom
       const waiterName = order.profiles?.full_name || "Sem garçom";
 
+      // Item vendido
+      const itemName = order.menu_items?.name || "Item desconhecido";
+      const itemDescription = `${order.quantity}x ${itemName}`;
+
+      // Número da mesa
+      const tableNumber = order.tables?.table_number ? `Mesa ${order.tables.table_number}` : "N/A";
+
+      // Valor da venda (quantidade * preço unitário)
+      const saleValue = formatCurrency((order.item_price || 0) * (order.quantity || 1));
+
       return [
         dateTime,
-        tableName,
-        itemName,
-        quantity,
-        unitPrice,
-        totalValue,
-        statusText,
+        tableNumber,
         waiterName,
+        itemDescription,
+        saleValue,
       ];
     });
 
     // Gerar tabela com autoTable
     autoTable(doc, {
-      head: [["Data/Hora", "Mesa", "Item", "Qtd", "Preço Un.", "Total Item", "Status", "Garçom"]],
+      head: [["Data/Hora", "Mesa", "Garçom", "Item Vendido", "Valor (R$)"]],
       body: tableData,
       startY: 35,
       styles: {
@@ -161,14 +157,11 @@ export function SalesReport() {
         fontStyle: "bold",
       },
       columnStyles: {
-        0: { cellWidth: 23 }, // Data/Hora
-        1: { cellWidth: 15 }, // Mesa
-        2: { cellWidth: 40 }, // Item
-        3: { cellWidth: 10, halign: "center" }, // Qtd
-        4: { cellWidth: 18, halign: "right" }, // Preço Un.
-        5: { cellWidth: 18, halign: "right" }, // Total Item
-        6: { cellWidth: 18 }, // Status
-        7: { cellWidth: 23 }, // Garçom
+        0: { cellWidth: 30 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 80 },
+        4: { cellWidth: 25, halign: "right" },
       },
       margin: { left: 10, right: 10 },
     });
@@ -244,13 +237,13 @@ export function SalesReport() {
               <h3 className="font-semibold text-lg mb-3">Resultado do Período</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Receita Total:</span>
+                  <span className="text-muted-foreground">Total de Vendas:</span>
                   <span className="font-bold text-xl text-primary">
                     {formatCurrency(result.total)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Itens Vendidos:</span>
+                  <span className="text-muted-foreground">Quantidade de Pedidos:</span>
                   <span className="font-semibold text-lg">
                     {result.count}
                   </span>
