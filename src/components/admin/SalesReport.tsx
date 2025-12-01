@@ -41,7 +41,9 @@ export function SalesReport() {
 
     try {
       // Ajustar endDate para incluir o final do dia
-      const adjustedEndDate = endDate ? `${endDate}T23:59:59` : endDate;
+      const end = new Date(endDate);
+      end.setDate(end.getDate() + 1);
+      const adjustedEndDate = end.toISOString().split('T')[0];
 
       // Query com joins para buscar dados completos
       const { data, error } = await supabase
@@ -59,7 +61,7 @@ export function SalesReport() {
         `)
         .eq("status", "closed")
         .gte("closed_at", startDate)
-        .lte("closed_at", adjustedEndDate)
+        .lt("closed_at", adjustedEndDate)
         .order("closed_at", { ascending: false });
 
       if (error) throw error;
