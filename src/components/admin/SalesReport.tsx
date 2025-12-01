@@ -50,29 +50,28 @@ export function SalesReport() {
       const adjustedEndDate = end.toISOString();
 
       // Query com joins para buscar dados completos
+      // Alterado para buscar da tabela 'orders'
       const { data, error } = await supabase
-        .from("tables")
+        .from("orders")
         .select(`
           id,
-          table_number,
-          closed_at,
-          total_amount,
+          completed_at,
+          quantity,
+          item_price,
           profiles:waiter_id(full_name),
-          orders:orders!orders_table_id_fkey(
-            quantity,
-            menu_items(name)
-          )
+          menu_items(name),
+          tables(table_number)
         `)
-        .eq("status", "closed")
-        .gte("closed_at", adjustedStartDate)
-        .lte("closed_at", adjustedEndDate)
-        .order("closed_at", { ascending: false });
+        .not("completed_at", "is", null) // Garante que o pedido foi concluído
+        .gte("completed_at", adjustedStartDate)
+        .lte("completed_at", adjustedEndDate)
+        .order("completed_at", { ascending: false });
 
       if (error) throw error;
 
       // Calcular totais para exibição
-      const total = data.reduce((acc, table) => acc + (table.total_amount || 0), 0);
-      const count = data.length;
+      const total = data.reduce((acc, order) => acc + (order.item_price || 0) * order.quantity, 0);
+      const count = data.reduce((acc, order) => acc + order.quantity, 0);
 
       setResult({ total, count });
 
@@ -112,13 +111,13 @@ export function SalesReport() {
 
     // Resumo
     doc.setFontSize(10);
-    doc.text(`Total de Mesas: ${count} | Total Geral: ${formatCurrency(total)}`, 105, 28, { align: "center" });
+    doc.text(`Total de Itens Vendidos: ${count} | Total Geral: ${formatCurrency(total)}`, 105, 28, { align: "center" });
 
     // Preparar dados da tabela
-    const tableData = data.map((table) => {
+    const tableData = data.map((order) => {
       // Formatar data/hora
-      const dateTime = table.closed_at 
-        ? new Date(table.closed_at).toLocaleString("pt-BR", {
+      const dateTime = order.completed_at 
+        ? new Date(order.completed_at).toLocaleString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
@@ -127,34 +126,31 @@ export function SalesReport() {
           })
         : "N/A";
 
+      const tableName = `Mesa ${order.tables?.table_number || "?"}`;
+      const itemName = order.menu_items?.name || "Item desconhecido";
+      const quantity = order.quantity;
+      const unitPrice = formatCurrency(order.item_price || 0);
+      const totalValue = formatCurrency((order.item_price || 0) * order.quantity);
+
       // Nome do garçom
-      const waiterName = table.profiles?.full_name || "Sem garçom";
-
-      // Concatenar itens consumidos
-      const items = table.orders && table.orders.length > 0
-        ? table.orders
-            .map((order: any) => {
-              const itemName = order.menu_items?.name || "Item desconhecido";
-              return `${order.quantity}x ${itemName}`;
-            })
-            .join(", ")
-        : "Sem itens";
-
-      // Valor total
-      const totalValue = formatCurrency(table.total_amount || 0);
+      const waiterName = order.profiles?.full_name || "Sem garçom";
 
       return [
         dateTime,
-        `Mesa ${table.table_number || "?"}`,
-        waiterName,
-        items,
+        tableName,
+        itemName,
+        quantity,
+        unitPrice,
         totalValue,
+        waiterName,
       ];
     });
 
     // Gerar tabela com autoTable
     autoTable(doc, {
-      head: [["Data/Hora", "Mesa", "Garçom", "Itens Consumidos", "Total (R$)"]],
+      head: [
+        ["Data/Hora", "Mesa", "Item", "Qtd", "Preço Un.", "Total Item", "Garçom"],
+      ],
       body: tableData,
       startY: 35,
       styles: {
@@ -167,11 +163,13 @@ export function SalesReport() {
         fontStyle: "bold",
       },
       columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 80 },
-        4: { cellWidth: 25, halign: "right" },
+        0: { cellWidth: 25 }, // Data/Hora
+        1: { cellWidth: 15 }, // Mesa
+        2: { cellWidth: 45 }, // Item
+        3: { cellWidth: 10, halign: "center" }, // Qtd
+        4: { cellWidth: 20, halign: "right" }, // Preço Un.
+        5: { cellWidth: 20, halign: "right" }, // Total Item
+        6: { cellWidth: 30 }, // Garçom
       },
       margin: { left: 10, right: 10 },
     });
@@ -247,13 +245,13 @@ export function SalesReport() {
               <h3 className="font-semibold text-lg mb-3">Resultado do Período</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Total de Vendas:</span>
+                  <span className="text-muted-foreground">Receita Total:</span>
                   <span className="font-bold text-xl text-primary">
                     {formatCurrency(result.total)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Quantidade de Mesas:</span>
+                  <span className="text-muted-foreground">Itens Vendidos:</span>
                   <span className="font-semibold text-lg">
                     {result.count}
                   </span>
