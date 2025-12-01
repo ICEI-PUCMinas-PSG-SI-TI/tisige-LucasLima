@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { FileText, Loader2, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -28,11 +28,7 @@ export function SalesReport() {
 
   const handleProcess = async () => {
     if (!startDate || !endDate) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha ambas as datas",
-        variant: "destructive",
-      });
+      toast.error("Por favor, preencha ambas as datas");
       return;
     }
 
@@ -55,20 +51,21 @@ export function SalesReport() {
         .from("orders")
         .select(`
           id,
-          completed_at,
+          created_at,
+          status,
           quantity,
           item_price,
           profiles:waiter_id(full_name),
           menu_items(name),
           tables(table_number)
         `)
-        .not("completed_at", "is", null) // Garante que o pedido foi concluído
-        .gte("completed_at", adjustedStartDate)
-        .lte("completed_at", adjustedEndDate)
-        .order("completed_at", { ascending: false });
+        .gte("created_at", adjustedStartDate)
+        .lte("created_at", adjustedEndDate)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
+      // Filtra apenas os pedidos que geram receita (não cancelados) para o cálculo
       // Calcular totais para exibição
       const total = data.reduce((acc, order) => acc + (order.item_price || 0) * order.quantity, 0);
       const count = data.reduce((acc, order) => acc + order.quantity, 0);
@@ -78,17 +75,10 @@ export function SalesReport() {
       // Gerar PDF
       generatePDF(data, startDate, endDate, total, count);
 
-      toast({
-        title: "Relatório gerado",
-        description: "O PDF foi baixado com sucesso",
-      });
+      toast.success("Relatório gerado com sucesso!");
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao processar o relatório",
-        variant: "destructive",
-      });
+      toast.error("Falha ao processar o relatório");
     } finally {
       setLoading(false);
     }
@@ -116,8 +106,8 @@ export function SalesReport() {
     // Preparar dados da tabela
     const tableData = data.map((order) => {
       // Formatar data/hora
-      const dateTime = order.completed_at 
-        ? new Date(order.completed_at).toLocaleString("pt-BR", {
+      const dateTime = order.created_at 
+        ? new Date(order.created_at).toLocaleString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
@@ -132,6 +122,15 @@ export function SalesReport() {
       const unitPrice = formatCurrency(order.item_price || 0);
       const totalValue = formatCurrency((order.item_price || 0) * order.quantity);
 
+      const statusLabels: Record<string, string> = {
+        pending: "Pendente",
+        preparing: "Preparando",
+        delivered: "Entregue",
+        cancelled: "Cancelado",
+      };
+
+      const statusText = statusLabels[order.status] || order.status;
+
       // Nome do garçom
       const waiterName = order.profiles?.full_name || "Sem garçom";
 
@@ -142,15 +141,14 @@ export function SalesReport() {
         quantity,
         unitPrice,
         totalValue,
+        statusText,
         waiterName,
       ];
     });
 
     // Gerar tabela com autoTable
     autoTable(doc, {
-      head: [
-        ["Data/Hora", "Mesa", "Item", "Qtd", "Preço Un.", "Total Item", "Garçom"],
-      ],
+      head: [["Data/Hora", "Mesa", "Item", "Qtd", "Preço Un.", "Total Item", "Status", "Garçom"]],
       body: tableData,
       startY: 35,
       styles: {
@@ -163,13 +161,14 @@ export function SalesReport() {
         fontStyle: "bold",
       },
       columnStyles: {
-        0: { cellWidth: 25 }, // Data/Hora
+        0: { cellWidth: 23 }, // Data/Hora
         1: { cellWidth: 15 }, // Mesa
-        2: { cellWidth: 45 }, // Item
+        2: { cellWidth: 40 }, // Item
         3: { cellWidth: 10, halign: "center" }, // Qtd
-        4: { cellWidth: 20, halign: "right" }, // Preço Un.
-        5: { cellWidth: 20, halign: "right" }, // Total Item
-        6: { cellWidth: 30 }, // Garçom
+        4: { cellWidth: 18, halign: "right" }, // Preço Un.
+        5: { cellWidth: 18, halign: "right" }, // Total Item
+        6: { cellWidth: 18 }, // Status
+        7: { cellWidth: 23 }, // Garçom
       },
       margin: { left: 10, right: 10 },
     });
