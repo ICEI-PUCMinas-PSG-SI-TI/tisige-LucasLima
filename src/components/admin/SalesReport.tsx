@@ -166,7 +166,7 @@ export function SalesReport() {
         0: { cellWidth: 30 },
         1: { cellWidth: 20 },
         2: { cellWidth: 30 },
-        3: { cellWidth: 80 },
+        3: { cellWidth: 75 },
         4: { cellWidth: 25, halign: "right" },
       },
       margin: { left: 10, right: 10 },
