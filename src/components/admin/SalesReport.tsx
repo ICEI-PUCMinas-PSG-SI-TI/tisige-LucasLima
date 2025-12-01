@@ -40,9 +40,13 @@ export function SalesReport() {
     setResult(null);
 
     try {
-      // Ajusta a data final para o final do dia (23:59:59)
-      const end = new Date(endDate);
-      end.setUTCHours(23, 59, 59, 999);
+      // Ajusta as datas para o fuso horário UTC para garantir a consistência da query
+      const start = new Date(startDate);
+      start.setUTCHours(0, 0, 0, 0);
+      const adjustedStartDate = start.toISOString();
+
+      const end = new Date(endDate); // A data do input é YYYY-MM-DD (meia-noite UTC)
+      end.setUTCHours(23, 59, 59, 999); // Ajusta para o final do dia em UTC
       const adjustedEndDate = end.toISOString();
 
       // Query com joins para buscar dados completos
@@ -60,7 +64,7 @@ export function SalesReport() {
           )
         `)
         .eq("status", "closed")
-        .gte("closed_at", startDate)
+        .gte("closed_at", adjustedStartDate)
         .lte("closed_at", adjustedEndDate)
         .order("closed_at", { ascending: false });
 
@@ -166,7 +170,7 @@ export function SalesReport() {
         0: { cellWidth: 30 },
         1: { cellWidth: 20 },
         2: { cellWidth: 30 },
-        3: { cellWidth: 75 },
+        3: { cellWidth: 80 },
         4: { cellWidth: 25, halign: "right" },
       },
       margin: { left: 10, right: 10 },
