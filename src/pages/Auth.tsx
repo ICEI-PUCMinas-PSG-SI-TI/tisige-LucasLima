@@ -6,9 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom"; // 1. Importação adicionada
 import logoAuth from "@/assets/logo_auth.png";
-import { ChefHat } from "lucide-react"; // Opcional: Ícone para ficar bonito
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
@@ -16,7 +14,6 @@ const loginSchema = z.object({
 });
 
 export default function Auth() {
-  const navigate = useNavigate(); // 2. Hook inicializado
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,33 +74,9 @@ export default function Auth() {
                 disabled={loading}
               />
             </div>
-            
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Ou acesse
-                </span>
-              </div>
-            </div>
-
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => navigate("/kitchen-login")}
-              disabled={loading}
-            >
-              <ChefHat className="mr-2 h-4 w-4" />
-              Painel da Cozinha
-            </Button>
-
           </form>
         </CardContent>
       </Card>

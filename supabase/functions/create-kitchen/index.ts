@@ -50,19 +50,29 @@ serve(async (req) => {
       );
     }
 
-    // Check if unit already has a kitchen
-    const { data: existingKitchenInUnit } = await supabaseAdmin
+    // Check if unit already has an active (non-deleted) kitchen
+    const { data: existingKitchens } = await supabaseAdmin
       .from("user_roles")
-      .select("id")
+      .select("id, user_id")
       .eq("unit_id", unit_id)
-      .eq("role", "kitchen")
-      .single();
+      .eq("role", "kitchen");
 
-    if (existingKitchenInUnit) {
-      return new Response(
-        JSON.stringify({ error: "Esta unidade já possui uma cozinha" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (existingKitchens && existingKitchens.length > 0) {
+      // Check if any of these kitchens is not soft-deleted
+      for (const kitchen of existingKitchens) {
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("deleted_at")
+          .eq("id", kitchen.user_id)
+          .single();
+        
+        if (profile && !profile.deleted_at) {
+          return new Response(
+            JSON.stringify({ error: "Esta unidade já possui uma cozinha" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     // Generate unique 5-digit identifier

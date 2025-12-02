@@ -15,7 +15,7 @@ export function UnitsManagement() {
     const { data, error } = await supabase
       .from("units")
       .select("*")
-      .order("name");
+      .order("name", { ascending: true });
 
     if (error) {
       toast.error("Erro ao carregar unidades");

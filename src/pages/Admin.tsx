@@ -131,10 +131,15 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <DashboardOverview 
-              ordersInProgress={ordersInProgress}
-              occupiedTables={occupiedTables}
-            />
+            <div className="space-y-6">
+              <div className="flex justify-end">
+                <DemoDataButton />
+              </div>
+              <DashboardOverview 
+                ordersInProgress={ordersInProgress}
+                occupiedTables={occupiedTables}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="menu">
@@ -150,12 +155,7 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="units">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <DemoDataButton />
-              </div>
-              <UnitsManagement />
-            </div>
+            <UnitsManagement />
           </TabsContent>
 
           <TabsContent value="kitchens">

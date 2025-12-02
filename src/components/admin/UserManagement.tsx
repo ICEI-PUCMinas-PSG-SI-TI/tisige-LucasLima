@@ -57,8 +57,13 @@ export function UserManagement() {
         };
       });
 
-      console.log("Users with roles:", usersWithRoles);
-      setUsers(usersWithRoles);
+      // Sort alphabetically by full_name
+      const sortedUsers = usersWithRoles.sort((a, b) => 
+        a.full_name.localeCompare(b.full_name, 'pt-BR')
+      );
+
+      console.log("Users with roles (sorted):", sortedUsers);
+      setUsers(sortedUsers);
     } catch (error) {
       console.error("Error in loadUsers:", error);
       toast.error("Erro ao carregar usuários");
@@ -94,7 +99,7 @@ export function UserManagement() {
 
       // Call the edge function to soft delete the user
       const { data, error } = await supabase.functions.invoke('soft-delete-user', {
-        body: { userId },
+        body: { user_id: userId },
       });
 
       if (error) throw error;

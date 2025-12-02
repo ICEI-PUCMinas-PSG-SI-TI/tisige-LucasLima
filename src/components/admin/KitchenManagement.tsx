@@ -28,11 +28,12 @@ export function KitchenManagement() {
 
   const loadKitchens = async () => {
     try {
-      // First, get all profiles with KITCHEN- prefix
+      // First, get all profiles with KITCHEN- prefix that are not soft-deleted
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, full_name, unit_id")
-        .like("full_name", "KITCHEN-%");
+        .select("id, full_name, unit_id, deleted_at")
+        .like("full_name", "KITCHEN-%")
+        .is("deleted_at", null);
 
       if (profilesError) {
         console.error("Error loading kitchen profiles:", profilesError);
@@ -47,8 +48,7 @@ export function KitchenManagement() {
         return;
       }
 
-      // Filter out soft-deleted profiles
-      const activeProfiles = profilesData.filter(p => !p.unit_id || p.unit_id !== null);
+      const activeProfiles = profilesData;
 
       // Get unit names for each profile
       const kitchensWithUnits = await Promise.all(
@@ -77,8 +77,15 @@ export function KitchenManagement() {
         })
       );
 
-      console.log("Kitchens with units:", kitchensWithUnits);
-      setKitchens(kitchensWithUnits);
+      // Sort alphabetically by unit_name (or full_name if no unit)
+      const sortedKitchens = kitchensWithUnits.sort((a, b) => {
+        const nameA = a.unit_name || a.full_name;
+        const nameB = b.unit_name || b.full_name;
+        return nameA.localeCompare(nameB, 'pt-BR');
+      });
+
+      console.log("Kitchens with units (sorted):", sortedKitchens);
+      setKitchens(sortedKitchens);
     } catch (error) {
       console.error("Error in loadKitchens:", error);
       toast.error("Erro ao carregar cozinhas");

@@ -1,140 +1,174 @@
 import { Button } from "@/components/ui/button";
-import { Database } from "lucide-react";
+import { Database, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const DemoDataButton = () => {
-  const [loading, setLoading] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [clearLoading, setClearLoading] = useState(false);
 
-  const generateDemoData = async () => {
-    setLoading(true);
+  const handleSeed = async () => {
+    setSeedLoading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast.error("Usuário não autenticado");
         return;
       }
 
-      // 1. Insert Menu Items
-      const menuItems = [
-        { name: "X-Burger Especial", category: "Lanches", price: 32.90, description: "Hambúrguer artesanal 180g, queijo cheddar, bacon crocante.", available: true },
-        { name: "Coca-Cola Lata", category: "Bebidas", price: 6.00, description: "350ml gelada", available: true },
-        { name: "Porção de Batata", category: "Porções", price: 25.00, available: true },
-        { name: "Suco de Laranja", category: "Bebidas", price: 12.00, available: true },
-        { name: "Pudim de Leite", category: "Sobremesas", price: 15.00, available: true }
-      ];
+      const { data, error } = await supabase.functions.invoke('seed-database', {
+        body: { action: 'seed' }
+      });
 
-      const { data: insertedMenuItems, error: menuError } = await supabase
-        .from("menu_items")
-        .insert(menuItems)
-        .select();
+      if (error) throw error;
 
-      if (menuError) throw menuError;
-
-      // 2. Insert Insumos
-      const insumos = [
-        { nome: "Pão de Hambúrguer", quantidade_atual: 50, unidade_de_medida: "un" },
-        { nome: "Carne Moída", quantidade_atual: 4, unidade_de_medida: "kg" },
-        { nome: "Refrigerantes", quantidade_atual: 8, unidade_de_medida: "cx" }
-      ];
-
-      const { error: insumosError } = await supabase
-        .from("insumos")
-        .insert(insumos);
-
-      if (insumosError) throw insumosError;
-
-      // 3. Insert Tables
-      const tables = [
-        { 
-          table_number: 101, 
-          status: "occupied" as const, 
-          client_name: "Mesa Diretoria", 
-          total_amount: 156.90, 
-          waiter_id: user.id, 
-          opened_at: new Date().toISOString() 
-        },
-        { 
-          table_number: 102, 
-          status: "waiting_payment" as const, 
-          client_name: "Cliente João", 
-          total_amount: 45.00, 
-          waiter_id: user.id, 
-          opened_at: new Date().toISOString() 
-        },
-        { 
-          table_number: 103, 
-          status: "available" as const, 
-          waiter_id: user.id 
+      if (data.success) {
+        toast.success(data.message);
+        if (data.stats) {
+          console.log('Estatísticas do seeding:', data.stats);
         }
-      ];
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      console.error("Erro ao popular banco:", error);
+      toast.error(error.message || "Erro ao popular banco de dados");
+    } finally {
+      setSeedLoading(false);
+    }
+  };
 
-      const { data: insertedTables, error: tablesError } = await supabase
-        .from("tables")
-        .insert(tables)
-        .select();
-
-      if (tablesError) throw tablesError;
-
-      // 4. Insert Orders (linked to Table 1)
-      if (insertedTables && insertedTables.length > 0 && insertedMenuItems && insertedMenuItems.length >= 3) {
-        const mesa1Id = insertedTables[0].id;
-        
-        const orders = [
-          {
-            table_id: mesa1Id,
-            menu_item_id: insertedMenuItems[0].id,
-            quantity: 2,
-            status: "preparing" as const,
-            waiter_id: user.id,
-            item_price: insertedMenuItems[0].price
-          },
-          {
-            table_id: mesa1Id,
-            menu_item_id: insertedMenuItems[1].id,
-            quantity: 3,
-            status: "preparing" as const,
-            waiter_id: user.id,
-            item_price: insertedMenuItems[1].price
-          },
-          {
-            table_id: mesa1Id,
-            menu_item_id: insertedMenuItems[2].id,
-            quantity: 1,
-            status: "pending" as const,
-            waiter_id: user.id,
-            item_price: insertedMenuItems[2].price
-          }
-        ];
-
-        const { error: ordersError } = await supabase
-          .from("orders")
-          .insert(orders);
-
-        if (ordersError) throw ordersError;
+  const handleClear = async () => {
+    setClearLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Usuário não autenticado");
+        return;
       }
 
-      toast.success("Dados de demonstração gerados!");
+      const { data, error } = await supabase.functions.invoke('seed-database', {
+        body: { action: 'clear' }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        throw new Error(data.error);
+      }
     } catch (error: any) {
-      console.error("Erro ao gerar dados:", error);
-      toast.error("Erro ao gerar dados de demonstração");
+      console.error("Erro ao limpar dados:", error);
+      toast.error(error.message || "Erro ao limpar dados de demonstração");
     } finally {
-      setLoading(false);
+      setClearLoading(false);
     }
   };
 
   return (
-    <Button 
-      onClick={generateDemoData} 
-      disabled={loading}
-      variant="outline"
-      size="sm"
-      className="gap-2"
-    >
-      <Database className="h-4 w-4" />
-      {loading ? "Gerando..." : "Gerar Dados Demo"}
-    </Button>
+    <div className="flex gap-2">
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="default"
+            size="sm"
+            className="gap-2"
+            disabled={seedLoading || clearLoading}
+          >
+            {seedLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Database className="h-4 w-4" />
+            )}
+            {seedLoading ? "Populando..." : "Popular Banco (Demo)"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Popular Banco de Dados</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá criar dados de demonstração incluindo:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>2 Unidades (Savassi e Prado)</li>
+                <li>2 Usuários de Cozinha</li>
+                <li>20 Garçons</li>
+                <li>20 Insumos no estoque</li>
+                <li>30 Itens no cardápio</li>
+                <li>Vendas históricas de Novembro/2025</li>
+              </ul>
+              <p className="mt-2 text-amber-600 font-medium">
+                Senha padrão dos usuários: SenhaForte12345
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSeed}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="destructive"
+            size="sm"
+            className="gap-2"
+            disabled={seedLoading || clearLoading}
+          >
+            {clearLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            {clearLoading ? "Limpando..." : "Limpar Dados Demo"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Dados de Demonstração</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-destructive font-semibold">ATENÇÃO: Esta ação é irreversível!</span>
+              <p className="mt-2">
+                Serão removidos TODOS os dados do banco, incluindo:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Todos os pedidos e mesas</li>
+                <li>Todos os itens do cardápio</li>
+                <li>Todo o estoque (insumos)</li>
+                <li>Todos os usuários (garçons e cozinhas)</li>
+              </ul>
+              <p className="mt-2 text-green-600 font-medium">
+                O usuário lucas@adm.com será preservado.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleClear}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, Limpar Tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };

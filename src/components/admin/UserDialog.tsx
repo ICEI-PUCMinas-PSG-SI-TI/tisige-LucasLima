@@ -24,13 +24,13 @@ const createUserSchema = z.object({
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
   password: z.string().min(8, "Senha deve ter no mínimo 8 caracteres").max(128, "Senha muito longa"),
   fullName: z.string().trim().min(1, "Nome é obrigatório").max(100, "Nome muito longo"),
-  role: z.enum(["waiter", "kitchen"]),
+  role: z.enum(["waiter", "kitchen", "admin"]),
   unitId: z.string().uuid("ID de unidade inválido").optional(),
 });
 
 const updateUserSchema = z.object({
   fullName: z.string().trim().min(1, "Nome é obrigatório").max(100, "Nome muito longo"),
-  role: z.enum(["waiter", "kitchen"]),
+  role: z.enum(["waiter", "kitchen", "admin"]),
   unitId: z.string().uuid("ID de unidade inválido").optional(),
 });
 
@@ -45,7 +45,7 @@ export function UserDialog({ open, onOpenChange, onSuccess, user }: UserDialogPr
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"waiter" | "kitchen">("waiter");
+  const [role, setRole] = useState<"waiter" | "kitchen" | "admin">("waiter");
   const [unitId, setUnitId] = useState<string>("");
   const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,11 +216,12 @@ export function UserDialog({ open, onOpenChange, onSuccess, user }: UserDialogPr
           )}
           <div className="space-y-2">
             <Label htmlFor="role">Função</Label>
-            <Select value={role} onValueChange={(value: any) => setRole(value)}>
+            <Select value={role} onValueChange={(value: "waiter" | "kitchen" | "admin") => setRole(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a função" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
                 <SelectItem value="waiter">Garçom</SelectItem>
                 <SelectItem value="kitchen">Cozinha</SelectItem>
               </SelectContent>

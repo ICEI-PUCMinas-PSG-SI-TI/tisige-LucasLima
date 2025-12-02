@@ -11,6 +11,7 @@ export default function Kitchen() {
   const { signOut, user } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [unitId, setUnitId] = useState<string | null>(null);
+  const [unitName, setUnitName] = useState<string>("");
 
   // Get kitchen user's unit
   useEffect(() => {
@@ -19,7 +20,7 @@ export default function Kitchen() {
 
       const { data, error } = await supabase
         .from("user_roles")
-        .select("unit_id")
+        .select("unit_id, units(name)")
         .eq("user_id", user.id)
         .eq("role", "kitchen")
         .single();
@@ -30,6 +31,7 @@ export default function Kitchen() {
       }
 
       setUnitId(data?.unit_id || null);
+      setUnitName((data?.units as any)?.name || "");
     };
 
     getKitchenUnit();
@@ -157,7 +159,7 @@ export default function Kitchen() {
     <div className="min-h-screen" style={{ backgroundColor: "hsl(var(--kitchen-bg))" }}>
       <header className="border-b" style={{ backgroundColor: "hsl(var(--kitchen-card))" }}>
         <div className="container mx-auto flex items-center justify-between p-4">
-          <h1 className="text-2xl font-bold text-foreground">Cozinha - Pedidos</h1>
+          <h1 className="text-2xl font-bold text-foreground">Cozinha {unitName && `${unitName} `}- Pedidos</h1>
           <Button variant="outline" onClick={signOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Sair

@@ -27,7 +27,7 @@ export function StockManagement() {
     const { data, error } = await supabase
       .from("insumos")
       .select("*")
-      .order("nome");
+      .order("quantidade_atual", { ascending: true });
 
     if (error) {
       toast.error("Erro ao carregar insumos");

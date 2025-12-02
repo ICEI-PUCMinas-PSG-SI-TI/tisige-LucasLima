@@ -17,3 +17,9 @@ verify_jwt = true
 
 [functions.update-kitchen]
 verify_jwt = true
+
+[functions.seed-database]
+verify_jwt = true
+
+[functions.soft-delete-user]
+verify_jwt = true

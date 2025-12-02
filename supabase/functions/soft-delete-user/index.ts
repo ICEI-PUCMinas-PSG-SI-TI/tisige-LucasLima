@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 interface SoftDeleteUserRequest {
-  userId: string
+  user_id: string
 }
 
 Deno.serve(async (req) => {
@@ -53,16 +53,20 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { userId }: SoftDeleteUserRequest = await req.json()
+    const body = await req.json()
+    console.log('Request body received:', body)
+    
+    const { user_id }: SoftDeleteUserRequest = body
 
-    if (!userId) {
+    if (!user_id) {
+      console.error('user_id not found in body:', body)
       throw new Error('userId é obrigatório')
     }
 
-    console.log(`Iniciando soft delete do usuário: ${userId}`)
+    console.log(`Iniciando soft delete do usuário: ${user_id}`)
 
     // Prevent admin from deleting themselves
-    if (userId === user.id) {
+    if (user_id === user.id) {
       throw new Error('Você não pode excluir sua própria conta')
     }
 
@@ -70,7 +74,7 @@ Deno.serve(async (req) => {
     const { data: targetRoleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
+      .eq('user_id', user_id)
       .single()
 
     if (targetRoleData?.role === 'admin') {
@@ -80,7 +84,7 @@ Deno.serve(async (req) => {
     // PASSO PRINCIPAL: Ban user in Auth (this is the critical action)
     console.log('Banindo usuário no sistema de autenticação...')
     const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
+      user_id,
       { ban_duration: '876000h' }
     )
 
@@ -98,7 +102,7 @@ Deno.serve(async (req) => {
       const { error: updateError, count } = await supabaseAdmin
         .from('profiles')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', userId)
+        .eq('id', user_id)
 
       if (updateError) {
         console.warn('Aviso: Erro ao atualizar perfil (não crítico):', updateError.message)
@@ -113,7 +117,7 @@ Deno.serve(async (req) => {
       console.warn('Aviso: Exceção ao atualizar perfil (ignorada):', profileError)
     }
 
-    console.log(`✓ Soft delete concluído com sucesso para usuário ${userId}`)
+    console.log(`✓ Soft delete concluído com sucesso para usuário ${user_id}`)
 
     return new Response(
       JSON.stringify({
